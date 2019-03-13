@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "deep-diff": "^1.0.2",
+    "node-fetch": "^2.3.0",
+    "sleep-promise": "^8.0.1",
+    "zeppelin-solidity": "^1.12.0"
+  }
+}
