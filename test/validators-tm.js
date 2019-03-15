@@ -21,9 +21,9 @@ const VALS = [
 		api: 'http://localhost:16657/',
 	},
 	{ //2
-		vaddr: '0x1AC05FA0DE24A0055151DEF404E8F59C65C728A8',
-		pkey: '0xf1a77590cde98599f1da457df010865dcc07a46c4b26aaeca8668ff729f7a5f9',
-		addr: '0x0000000000000000000000000000000000000000',
+		vaddr: '0x5C62696FA60CE0BFE1851EB48B24494862D5F9E5',
+		pkey: '0xcc930f7483d6f42d73821587a44061ae0a2653ae9d843cc3e5503770613c4573',
+		addr: '0xd8750A7c127D3D5ed315C8286fa54316B18B639e',
 		api: 'http://localhost:26657/',
 	},
 	{ //3
@@ -93,7 +93,7 @@ contract('Validators', async function (accounts) {
     it("should validators set of 2 and 3 be the same", async function () {
         await checkValidatorSets([2, 3], 2);
     }); */
-    
+
     it("should users add deposits", async function () {
 		await validators.addInitialDeposit(VALS[3].pkey, VALS[3].addr, VALS[3].addr, {from: accounts[0], value: web3.utils.toWei('2500', 'ether')});
 		 
@@ -104,14 +104,14 @@ contract('Validators', async function (accounts) {
     it("should address of validator be right", async function () {
         let ret = await validators.getCompactedValidators();
 
-        assert.equal(ret[0].length, 1, "There should be 1 validator by now")
+        assert.equal(ret[0].length, 2, "There should be 2 validators by now")
 
-        assert.equal(ret[0][0].substr(28).toUpperCase(), VALS[3].addr.substr(2).toUpperCase(), "Validator 3 address should match")
-        assert.equal(ret[1][0].substr(2).toUpperCase(), VALS[3].pkey.substr(2).toUpperCase(), "Validator 3 pubKey should match")
-        assert.equal(ret[0][0].substr(8, 2).toUpperCase(), '01', "Validator 3 should be paused")
+        assert.equal(ret[0][1].substr(28).toUpperCase(), VALS[3].addr.substr(2).toUpperCase(), "Validator 3 address should match")
+        assert.equal(ret[1][1].substr(2).toUpperCase(), VALS[3].pkey.substr(2).toUpperCase(), "Validator 3 pubKey should match")
+        assert.equal(ret[0][1].substr(8, 2).toUpperCase(), '01', "Validator 3 should be paused")
 
         let activeCount = await validators.getActiveCount();
-        assert.equal(+activeCount, 0, "There should be 0 active validators")
+        assert.equal(+activeCount, 1, "There should be 1 active validator")
     });
 
     it("add money to val 3", async function () {
@@ -234,7 +234,7 @@ contract('Validators', async function (accounts) {
 
     	web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
 
-    	await sleep(10)
+    	await sleep(10);
 
     	assert.equal(await web3.eth.getBlockNumber(), block, "There should not be any new block without +2/3 of validators");
 
@@ -245,7 +245,7 @@ contract('Validators', async function (accounts) {
     	let block = await web3.eth.getBlockNumber();
     	
     	execSync(PATH_TO_SCRIPTS + '\\run4.cmd');
-    	await sleep(10*1000);
+    	await sleep(20*1000);
 
     	assert.equal(await web3.eth.getBlockNumber(), block+1, "The block should have been generated using +2/3");
 
@@ -254,7 +254,7 @@ contract('Validators', async function (accounts) {
     });
 
     it("should validator 4 be paused", async function() {
-    	await validators.pauseValidation(VALS[4].pkey, VALS[4].pkey, 1, {from: VALS[4].addr});
+    	await validators.pauseValidation(VALS[4].pkey, VALS[4].pkey, 1, 0, {from: VALS[4].addr});
 
     	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
     	
@@ -266,23 +266,28 @@ contract('Validators', async function (accounts) {
     	execSync(PATH_TO_SCRIPTS + '\\run2.cmd');
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 4');
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 5');
-    	await sleep(2*1000);
+    	await sleep(15*1000);
 
     	let block = await web3.eth.getBlockNumber();
 
-    	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
+    	await Promise.all([
+    	    web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')}),
+            web3.eth.sendTransaction({from: accounts[1], to: accounts[1], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')}),
+        ]);
 
     	assert.equal(await web3.eth.getBlockNumber(), block+1, "There should be new block with +2/3 of validators");
 
     	await checkValidatorSets([1, 2, 3], 4);
     });
 
+
     it("should validator 4 be resumed", async function() {
     	execSync(PATH_TO_SCRIPTS + '\\run4.cmd');
-    	
+        await sleep(15*1000);
+
     	await Promise.all([
     		validators.resumeValidation(VALS[4].pkey, {from: VALS[4].addr}),
-    		validators.pauseValidation(VALS[5].pkey, VALS[5].pkey, 1, {from: VALS[5].addr}),
+    		validators.pauseValidation(VALS[5].pkey, VALS[5].pkey, 1, 0, {from: VALS[5].addr}),
     	]);
 
     	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
@@ -299,9 +304,9 @@ contract('Validators', async function (accounts) {
 
     it("should all validators but 2nd be paused", async function() {
     	await Promise.all([
-    		validators.pauseValidation(VALS[4].pkey, VALS[4].pkey, 1, {from: VALS[4].addr}),
-    		validators.pauseValidation(VALS[1].pkey, VALS[1].pkey, 1, {from: VALS[1].addr}),
-    		validators.pauseValidation(VALS[3].pkey, VALS[3].pkey, 1, {from: VALS[3].addr}),
+    		validators.pauseValidation(VALS[4].pkey, VALS[4].pkey, 1, 0, {from: VALS[4].addr}),
+    		validators.pauseValidation(VALS[1].pkey, VALS[1].pkey, 1, 0, {from: VALS[1].addr}),
+    		validators.pauseValidation(VALS[3].pkey, VALS[3].pkey, 1, 0, {from: VALS[3].addr}),
     	]);
 
     	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
@@ -312,6 +317,7 @@ contract('Validators', async function (accounts) {
 
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 1');
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 4');
+        await sleep(15*1000);
 
     	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
 
@@ -323,19 +329,21 @@ contract('Validators', async function (accounts) {
     it("should restore other validators", async function() {
     	execSync(PATH_TO_SCRIPTS + '\\run4.cmd');
     	execSync(PATH_TO_SCRIPTS + '\\run5.cmd');
+        await sleep(15*1000);
 
     	await Promise.all([
     		validators.resumeValidation(VALS[4].pkey, {from: VALS[4].addr}),
-    		validators.resumeValidation(VALS[1].pkey, {from: VALS[1].addr}),
     		validators.resumeValidation(VALS[3].pkey, {from: VALS[3].addr}),
     		validators.resumeValidation(VALS[5].pkey, {from: VALS[5].addr}),
     	]);
+
+        await validators.resumeValidation(VALS[1].pkey, {from: VALS[1].addr});
 
     	await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
 
     	await checkValidatorSets([2, 3, 4, 5], 5);
     });
-
+/* */
     it("should be able to do a lot of operations and blocks - 50", async function () {
     	let block = await web3.eth.getBlockNumber();
     	for(let i=0; i<50; ++i){

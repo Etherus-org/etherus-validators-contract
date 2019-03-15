@@ -26,8 +26,9 @@ contract Validators is Ownable {
         uint96 punishValue;       //The fine that should be paid to unpause this node
     }
 
-    uint private constant MIN_DEPOSIT_INCREMENT = 10 ether;
-    uint private constant MIN_DEPOSIT = 2500 ether;
+    uint public c_MIN_DEPOSIT_INCREMENT = 10 ether;
+    uint public c_MIN_DEPOSIT = 2500 ether;
+
     //Число блоков, на которые блокируется нода перед выводом депозита
     uint48 private constant DEPOSIT_LOCK_BLOCKS = 6000;
     //Число блоков, на которые блокируется нода, получившее предупреждение
@@ -75,7 +76,7 @@ contract Validators is Ownable {
         require(!isPaused(vPub) && hasDeposit(vPub), "Node should not be paused and should have deposit");
         require(cause >= PAUSE_CAUSE_VOLUNTARILY, "You should specify cause");
         require(getNodeAddr(vFrom) == msg.sender, "Node should correctly pass its validator public key");
-        require(msg.sender == owner || anyoneCanPunish, "Wrong punisher");
+        require(cause == PAUSE_CAUSE_VOLUNTARILY || msg.sender == owner || anyoneCanPunish, "Wrong punisher");
         require(cause != PAUSE_CAUSE_UNTIL_BLOCK || punishValue < NODE_LOCK_BLOCKS_MAX, "Wrong blocks number");
 
         if(vPub != vFrom){
@@ -114,7 +115,7 @@ contract Validators is Ownable {
             v.deposit -= v.punishValue;
         }
 
-        require(v.deposit >= MIN_DEPOSIT, "You can not unpause before deposit exceeds min value");
+        require(v.deposit >= c_MIN_DEPOSIT, "You can not unpause before deposit exceeds min value");
 
         v.pauseBlockNumber = 0;
         v.pauseCause = 0;
@@ -127,6 +128,11 @@ contract Validators is Ownable {
 
     function enablePunishers(bool all) onlyOwner public {
         anyoneCanPunish = all;
+    }
+
+    function setDepositBounds(uint min_dep, uint min_dep_inc) onlyOwner public{
+        c_MIN_DEPOSIT = min_dep;
+        c_MIN_DEPOSIT_INCREMENT = min_dep_inc;
     }
 
     function withdraw(bytes32 vPub) public {
@@ -152,7 +158,7 @@ contract Validators is Ownable {
     }
 
     function addInitialDeposit(bytes32 vPub, address payable nodeAddr, address payable receiver) public payable {
-        require(msg.value >= MIN_DEPOSIT_INCREMENT, "Too small value to add to the deposit");
+        require(msg.value >= c_MIN_DEPOSIT_INCREMENT, "Too small value to add to the deposit");
 
         Validator storage v = validators[vPub];
         v.deposit += uint96(msg.value);
