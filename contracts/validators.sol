@@ -73,7 +73,10 @@ contract Validators is Ownable {
     }
 
     function pauseValidation(bytes32 vPub, bytes32 vFrom, uint8 cause, uint96 punishValue) public {
-        require(!isPaused(vPub) && hasDeposit(vPub), "Node should not be paused and should have deposit");
+        require(hasDeposit(vPub), "Node should have deposit");
+        Validator storage v = validators[vPub];
+
+        require(v.pauseCause == PAUSE_NOT_PAUSED || msg.sender == owner || anyoneCanPunish);
         require(cause >= PAUSE_CAUSE_VOLUNTARILY, "You should specify cause");
         require(getNodeAddr(vFrom) == msg.sender, "Node should correctly pass its validator public key");
         require(cause == PAUSE_CAUSE_VOLUNTARILY || msg.sender == owner || anyoneCanPunish, "Wrong punisher");
@@ -85,8 +88,6 @@ contract Validators is Ownable {
         }else{
             require(cause == PAUSE_CAUSE_VOLUNTARILY, "You are pausing voluntarily");
         }
-
-        Validator storage v = validators[vPub];
 
         v.pauseBlockNumber = uint48(block.number);
         v.pauseCause = cause;

@@ -125,6 +125,24 @@ contract('Validators', async function (accounts) {
 
     });
 
+    it("Should owner be able to punish paused validator", async () => {
+        await validators.pauseValidation(getVal(1), getVal(1), PAUSE_CAUSE_VOLUNTARILY, 0, {from: accounts[1]});
+
+        await validators.addDeposit(getVal(1), {from: accounts[1], value: web3.utils.toWei('2', 'ether')});
+
+        let val = await validators.getValidator(getVal(1));
+        assert.equal(val.pauseCause.toNumber(), PAUSE_CAUSE_VOLUNTARILY, "Validator 1 should be paused");
+
+        await validators.pauseValidation(getVal(1),  getVal(0), PAUSE_CAUSE_UNTIL_FINE, web3.utils.toWei('2', 'ether'), {from: accounts[0]});
+        val = await validators.getValidator(getVal(1));
+        assert.equal(val.pauseCause.toNumber(), PAUSE_CAUSE_UNTIL_FINE, "Validator 1 should be paused until fine");
+
+        await validators.resumeValidation(getVal(1), {from: accounts[1]});
+
+        assert.equal(await validators.isPaused(getVal(1)), false, "Validator 1 should be unpaused");
+
+    });
+
     it("Should owner be able to punish", async () => {
         await testRpc.assertThrow("Punishing is possible only from owner", async () => {
             await validators.pauseValidation(getVal(0),  getVal(1), PAUSE_CAUSE_UNTIL_FINE, web3.utils.toWei('2', 'ether'), {from: accounts[1]});

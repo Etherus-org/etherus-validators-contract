@@ -1,4 +1,5 @@
 let Validators = artifacts.require("./validators.sol");
+let Ownable = artifacts.require("./Ownable.sol");
 
 const testRpc = require('./helpers/testRpc');
 const fetch = require('node-fetch');
@@ -82,12 +83,13 @@ async function checkValidatorSets(vals, num){
 }
 
 contract('Validators', async function (accounts) {
-    let validators;
+    let validators, receiverContract;
 
     debugger;
 
     before(async function(){
         validators = await Validators.at('0x0000000000000000000000000000000000000fff');
+        receiverContract = await Ownable.new();
     });
 /*
     it("should validators set of 2 and 3 be the same", async function () {
@@ -95,7 +97,7 @@ contract('Validators', async function (accounts) {
     }); */
 
     it("should users add deposits", async function () {
-		await validators.addInitialDeposit(VALS[3].pkey, VALS[3].addr, VALS[3].addr, {from: accounts[0], value: web3.utils.toWei('2500', 'ether')});
+		await validators.addInitialDeposit(VALS[3].pkey, VALS[3].addr, receiverContract.address, {from: accounts[0], value: web3.utils.toWei('2500', 'ether')});
 		 
         assert.equal(await validators.hasDeposit(VALS[3].pkey), true, "An address should have deposit now");
         assert.equal(await validators.hasDeposit(VALS[4].pkey), false, "An address should not have deposit by now");
@@ -178,6 +180,11 @@ contract('Validators', async function (accounts) {
     	//await sleep(2000);
         await checkValidatorSets([2, 3, 4, 5], 5);
     });
+
+    it("should receiverContract have money", async () => {
+    	let balance = await web3.eth.getBalance(receiverContract.address);
+    	assert.isAbove(+balance, 0, "receiverContract should have received some block rewards!");
+	});
 
     it("should be able to do a lot of operations", async function () {
     	let promises = [];
@@ -266,7 +273,7 @@ contract('Validators', async function (accounts) {
     	execSync(PATH_TO_SCRIPTS + '\\run2.cmd');
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 4');
     	execSync(PATH_TO_SCRIPTS + '\\stop.cmd 5');
-    	await sleep(15*1000);
+    	await sleep(30*1000);
 
     	let block = await web3.eth.getBlockNumber();
 
@@ -343,7 +350,7 @@ contract('Validators', async function (accounts) {
 
     	await checkValidatorSets([2, 3, 4, 5], 5);
     });
-/* */
+/*
     it("should be able to do a lot of operations and blocks - 50", async function () {
     	let block = await web3.eth.getBlockNumber();
     	for(let i=0; i<50; ++i){
