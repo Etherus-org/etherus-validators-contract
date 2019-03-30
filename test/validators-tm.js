@@ -137,7 +137,6 @@ contract('Validators', async function (accounts) {
         assert.equal((await web3.eth.getBalance(VALS[5].addr)).toString(), web3.utils.toWei('100', 'ether'), "Validator 5 should have money now");
     });
 
-
     it("should validators set of 2 and 3 be the same", async function () {
         await checkValidatorSets([2, 3], 2);
     });
@@ -182,8 +181,10 @@ contract('Validators', async function (accounts) {
     });
 
     it("should receiverContract have money", async () => {
-    	let balance = await web3.eth.getBalance(receiverContract.address);
-    	assert.isAbove(+balance, 0, "receiverContract should have received some block rewards!");
+    	let v = await validators.getValidator(VALS[3].pkey);
+    	assert.notEqual(v.receiver, v.nodeAddr, "There should be separate receiver for validator 3");
+    	let balance = await web3.eth.getBalance(v.receiver);
+    	assert.isOk(web3.utils.toBN(balance).gt(web3.utils.toBN("0")), "receiverContract should have received some block rewards: " + balance + "!");
 	});
 
     it("should be able to do a lot of operations", async function () {
@@ -350,15 +351,23 @@ contract('Validators', async function (accounts) {
 
     	await checkValidatorSets([2, 3, 4, 5], 5);
     });
-/*
+
+    let val1Balance;
     it("should be able to do a lot of operations and blocks - 50", async function () {
+    	val1Balance = await web3.eth.getBalance(VALS[1].addr);
     	let block = await web3.eth.getBlockNumber();
     	for(let i=0; i<50; ++i){
-    		await web3.eth.sendTransaction({from: accounts[0], to: accounts[i%5], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
+    		await web3.eth.sendTransaction({from: accounts[0], to: accounts[0], value: web3.utils.toWei(Math.random().toFixed(15), 'ether')})
     	}
     	assert.isAtLeast(await web3.eth.getBlockNumber(), block + 50, "We should have added 50+ blocks!");
     });
 
+
+    it("offline validator should not get money", async function () {
+        const val1Balance_new = await web3.eth.getBalance(VALS[1].addr);
+    	assert.equal(val1Balance, val1Balance_new, "Balance of offline validator should not change");
+    })
+    /*
     it("should be able to do a lot of operations and blocks - 100", async function () {
     	let block = await web3.eth.getBlockNumber();
     	for(let i=0; i<50; ++i){
